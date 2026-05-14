@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vera — Meet Real People Around You</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ============================
+     RESET + BASE
+     ============================ */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-0: #050507;
+    --bg-1: #0a0a10;
+    --bg-2: #11111a;
+    --ink: #f5f5f7;
+    --ink-dim: rgba(245, 245, 247, 0.66);
+    --ink-faint: rgba(245, 245, 247, 0.42);
+    --ink-ghost: rgba(245, 245, 247, 0.14);
+
+    --blue: #4d9fff;
+    --violet: #a78bfa;
+    --teal: #5eead4;
+
+    --glass-bg: rgba(255, 255, 255, 0.04);
+    --glass-stroke: rgba(255, 255, 255, 0.08);
+    --glass-stroke-bright: rgba(255, 255, 255, 0.14);
+  }
+
+  html, body {
+    background: var(--bg-0);
+    color: var(--ink);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-weight: 300;
+    letter-spacing: -0.01em;
+    overflow-x: hidden;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection { background: rgba(167, 139, 250, 0.35); color: #fff; }
+
+  a { color: inherit; text-decoration: none; }
+
+  /* ============================
+     GLOBAL BACKDROP — animated mesh gradient
+     ============================ */
+  .backdrop {
+    position: fixed; inset: 0; z-index: -2;
+    background: var(--bg-0);
+    overflow: hidden;
+  }
+  .backdrop::before,
+  .backdrop::after {
+    content: ""; position: absolute; border-radius: 50%;
+    filter: blur(120px); opacity: 0.55;
+    will-change: transform;
+  }
+  .backdrop::before {
+    width: 60vw; height: 60vw; top: -20vw; left: -10vw;
+    background: radial-gradient(circle, var(--violet), transparent 70%);
+    animation: drift1 28s ease-in-out infinite alternate;
+  }
+  .backdrop::after {
+    width: 55vw; height: 55vw; bottom: -20vw; right: -10vw;
+    background: radial-gradient(circle, var(--blue), transparent 70%);
+    animation: drift2 32s ease-in-out infinite alternate;
+  }
+
+  /* secondary orb */
+  .orb-teal {
+    position: fixed; z-index: -1;
+    width: 40vw; height: 40vw;
+    top: 30%; left: 40%;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--teal), transparent 70%);
+    filter: blur(140px);
+    opacity: 0.18;
+    animation: drift3 40s ease-in-out infinite alternate;
+    pointer-events: none;
+  }
+
+  @keyframes drift1 {
+    0% { transform: translate(0,0) scale(1); }
+    100% { transform: translate(20vw, 10vh) scale(1.2); }
+  }
+  @keyframes drift2 {
+    0% { transform: translate(0,0) scale(1); }
+    100% { transform: translate(-15vw, -10vh) scale(1.15); }
+  }
+  @keyframes drift3 {
+    0% { transform: translate(0,0); }
+    100% { transform: translate(-20vw, 20vh); }
+  }
+
+  /* subtle grain */
+  .grain {
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    opacity: 0.04;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='4'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    mix-blend-mode: overlay;
+  }
+
+  /* ============================
+     LAYOUT
+     ============================ */
+  section {
+    position: relative;
+    padding: 140px 32px;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  @media (max-width: 700px) {
+    section { padding: 100px 22px; }
+  }
+
+  /* ============================
+     NAV
+     ============================ */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+    padding: 20px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    background: rgba(5, 5, 7, 0.55);
+    border-bottom: 1px solid var(--glass-stroke);
+  }
+  .logo {
+    font-weight: 600; font-size: 18px; letter-spacing: -0.02em;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .logo-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--blue), var(--violet));
+    box-shadow: 0 0 14px var(--violet);
+  }
+  nav .nav-cta {
+    font-size: 13px; padding: 10px 18px;
+    border: 1px solid var(--glass-stroke-bright);
+    border-radius: 999px;
+    background: var(--glass-bg);
+    transition: all .25s ease;
+  }
+  nav .nav-cta:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.25); }
+
+  /* ============================
+     SHARED COMPONENTS
+     ============================ */
+  .eyebrow {
+    font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 500;
+    display: inline-flex; align-items: center; gap: 10px;
+    margin-bottom: 28px;
+  }
+  .eyebrow::before {
+    content: ""; width: 28px; height: 1px;
+    background: linear-gradient(90deg, var(--violet), transparent);
+  }
+
+  h1, h2, h3 { font-weight: 300; letter-spacing: -0.035em; line-height: 1.05; }
+  h1 { font-size: clamp(42px, 7vw, 88px); }
+  h2 { font-size: clamp(32px, 4.6vw, 56px); }
+  h3 { font-size: clamp(20px, 2vw, 26px); font-weight: 400; }
+
+  .lede {
+    color: var(--ink-dim);
+    font-size: clamp(16px, 1.4vw, 19px);
+    max-width: 640px;
+    margin-top: 28px;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 16px 28px; border-radius: 999px;
+    font-size: 14px; font-weight: 500; letter-spacing: -0.005em;
+    cursor: pointer; border: 1px solid transparent;
+    transition: all .3s cubic-bezier(.2,.7,.3,1);
+    font-family: inherit;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--blue), var(--violet));
+    color: #fff;
+    box-shadow: 0 10px 40px -10px rgba(77, 159, 255, 0.55);
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 60px -10px rgba(167, 139, 250, 0.7);
+  }
+  .btn-ghost {
+    background: var(--glass-bg);
+    border-color: var(--glass-stroke-bright);
+    color: var(--ink);
+    backdrop-filter: blur(10px);
+  }
+  .btn-ghost:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.28);
+  }
+  .btn-arrow { transition: transform .25s; }
+  .btn:hover .btn-arrow { transform: translateX(3px); }
+
+  /* Glass card baseline */
+  .glass {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 20px;
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+  }
+
+  /* ============================
+     HERO
+     ============================ */
+  .hero {
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    justify-content: center;
+    padding-top: 160px;
+  }
+  .hero h1 .grad {
+    background: linear-gradient(135deg, var(--blue) 0%, var(--violet) 50%, var(--teal) 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero-actions {
+    display: flex; gap: 14px; margin-top: 44px; flex-wrap: wrap;
+  }
+  .hero-tags {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .float-tag {
+    position: absolute;
+    padding: 10px 16px;
+    font-size: 12px; font-weight: 400;
+    border-radius: 999px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-stroke-bright);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    color: var(--ink);
+    white-space: nowrap;
+    box-shadow: 0 8px 30px -10px rgba(0,0,0,0.5);
+    animation: floatTag 8s ease-in-out infinite;
+  }
+  .float-tag .dot {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--teal); margin-right: 8px;
+    box-shadow: 0 0 8px var(--teal);
+  }
+  .float-tag.violet .dot { background: var(--violet); box-shadow: 0 0 8px var(--violet); }
+  .float-tag.blue .dot   { background: var(--blue);   box-shadow: 0 0 8px var(--blue); }
+
+  /* place tags */
+  .t1 { top: 22%;  right: 8%;   animation-delay: 0s; }
+  .t2 { top: 42%;  right: 18%;  animation-delay: 1.5s; }
+  .t3 { top: 70%;  right: 4%;   animation-delay: 3s; }
+  .t4 { top: 28%;  left: 4%;    animation-delay: 0.6s; }
+  .t5 { top: 60%;  left: 10%;   animation-delay: 2.2s; }
+  .t6 { top: 85%;  left: 24%;   animation-delay: 4s; }
+
+  @keyframes floatTag {
+    0%, 100% { transform: translateY(0) translateX(0); }
+    50%      { transform: translateY(-14px) translateX(6px); }
+  }
+
+  @media (max-width: 900px) {
+    .float-tag { font-size: 11px; padding: 8px 12px; }
+    .t1, .t3 { display: none; }
+  }
+
+  /* ============================
+     PROBLEM
+     ============================ */
+  .problem-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    margin-top: 60px;
+  }
+  @media (max-width: 800px) { .problem-grid { grid-template-columns: repeat(2, 1fr); } }
+  .problem-card {
+    padding: 28px 24px;
+    border-radius: 18px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-stroke);
+    backdrop-filter: blur(14px);
+    color: var(--ink-dim);
+    transition: all .4s ease;
+    animation: fadePulse 6s ease-in-out infinite;
+  }
+  .problem-card:nth-child(2) { animation-delay: 1.2s; }
+  .problem-card:nth-child(3) { animation-delay: 2.4s; }
+  .problem-card:nth-child(4) { animation-delay: 3.6s; }
+  .problem-card:hover { border-color: var(--glass-stroke-bright); color: var(--ink); transform: translateY(-3px); }
+  .problem-card .lbl {
+    font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-faint); margin-bottom: 12px;
+  }
+  .problem-card .ttl { font-size: 18px; font-weight: 400; color: var(--ink); }
+
+  @keyframes fadePulse {
+    0%, 100% { opacity: 0.7; }
+    50%      { opacity: 1; }
+  }
+
+  .problem-body {
+    margin-top: 64px;
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 60px;
+  }
+  @media (max-width: 800px) { .problem-body { grid-template-columns: 1fr; gap: 30px; } }
+  .problem-body p { color: var(--ink-dim); font-size: 16px; }
+  .problem-body p + p { margin-top: 18px; }
+
+  /* ============================
+     WHO IT'S FOR — interest tags
+     ============================ */
+  .interests {
+    margin-top: 60px;
+    display: flex; flex-wrap: wrap; gap: 12px;
+  }
+  .interest-tag {
+    padding: 12px 20px;
+    border-radius: 999px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-stroke);
+    backdrop-filter: blur(12px);
+    color: var(--ink-dim);
+    font-size: 14px;
+    cursor: default;
+    transition: all .3s ease;
+  }
+  .interest-tag:hover {
+    color: #fff;
+    background: rgba(167, 139, 250, 0.12);
+    border-color: rgba(167, 139, 250, 0.4);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px -10px rgba(167, 139, 250, 0.5);
+  }
+  .who-copy { color: var(--ink-dim); max-width: 580px; margin-top: 48px; font-size: 16px; }
+
+  /* ============================
+     PEOPLE AROUND YOU — map mockup
+     ============================ */
+  .map-wrap {
+    margin-top: 60px;
+    position: relative;
+    border-radius: 28px;
+    overflow: hidden;
+    height: 540px;
+    background:
+      radial-gradient(circle at 30% 40%, rgba(77,159,255,0.12), transparent 50%),
+      radial-gradient(circle at 70% 60%, rgba(167,139,250,0.12), transparent 50%),
+      linear-gradient(180deg, var(--bg-2), var(--bg-1));
+    border: 1px solid var(--glass-stroke);
+  }
+  /* grid lines on map */
+  .map-grid {
+    position: absolute; inset: 0; opacity: 0.5;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: 50px 50px;
+    mask-image: radial-gradient(circle at 50% 50%, black 30%, transparent 70%);
+    -webkit-mask-image: radial-gradient(circle at 50% 50%, black 30%, transparent 70%);
+  }
+  /* user nodes */
+  .node {
+    position: absolute;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--teal);
+    box-shadow: 0 0 0 4px rgba(94, 234, 212, 0.18), 0 0 22px var(--teal);
+    animation: pulseNode 2.4s ease-in-out infinite;
+  }
+  .node.v { background: var(--violet); box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.18), 0 0 22px var(--violet); }
+  .node.b { background: var(--blue);   box-shadow: 0 0 0 4px rgba(77, 159, 255, 0.18), 0 0 22px var(--blue); }
+  @keyframes pulseNode {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.25); }
+  }
+  .n1 { top: 22%; left: 18%; }
+  .n2 { top: 60%; left: 30%; animation-delay: .4s; }
+  .n3 { top: 38%; left: 70%; animation-delay: .8s; }
+  .n4 { top: 75%; left: 62%; animation-delay: 1.2s; }
+  .n5 { top: 30%; left: 50%; animation-delay: 1.6s; }
+
+  /* center "you" node */
+  .me {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(135deg, var(--blue), var(--violet));
+    box-shadow: 0 0 0 6px rgba(167,139,250,0.18), 0 0 40px var(--violet);
+  }
+  .me::after {
+    content: "";
+    position: absolute; inset: -50px;
+    border-radius: 50%;
+    border: 1px solid rgba(167,139,250,0.3);
+    animation: ringPulse 3s ease-out infinite;
+  }
+  @keyframes ringPulse {
+    0%   { transform: scale(0.6); opacity: 1; }
+    100% { transform: scale(2);   opacity: 0; }
+  }
+
+  /* profile card mockup */
+  .profile-card {
+    position: absolute;
+    padding: 16px 18px;
+    border-radius: 16px;
+    background: rgba(15, 15, 22, 0.7);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    border: 1px solid var(--glass-stroke-bright);
+    width: 220px;
+    box-shadow: 0 20px 50px -15px rgba(0,0,0,0.6);
+  }
+  .pc-1 { top: 12%; right: 5%; }
+  .pc-2 { bottom: 12%; left: 5%; }
+  .pc-head { display: flex; align-items: center; gap: 12px; }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--teal), var(--blue));
+    flex-shrink: 0;
+  }
+  .pc-2 .avatar { background: linear-gradient(135deg, var(--violet), var(--blue)); }
+  .pc-name { font-size: 14px; font-weight: 500; }
+  .pc-dist { font-size: 11px; color: var(--ink-faint); }
+  .pc-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .pc-tag {
+    font-size: 10px; padding: 4px 9px; border-radius: 999px;
+    background: rgba(255,255,255,0.05); border: 1px solid var(--glass-stroke);
+    color: var(--ink-dim);
+  }
+  .pc-verified {
+    margin-top: 12px; font-size: 11px;
+    color: var(--teal); display: flex; align-items: center; gap: 6px;
+  }
+  .pc-verified::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--teal); box-shadow: 0 0 8px var(--teal);
+  }
+
+  @media (max-width: 700px) {
+    .map-wrap { height: 460px; }
+    .profile-card { width: 180px; }
+  }
+
+  /* Intent toggle UI */
+  .intents {
+    margin-top: 48px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
+  }
+  .intents-label { font-size: 13px; color: var(--ink-faint); margin-right: 6px; }
+  .intent-pill {
+    padding: 10px 18px;
+    border-radius: 999px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-stroke);
+    font-size: 13px; color: var(--ink-dim);
+    cursor: pointer; transition: all .25s;
+    backdrop-filter: blur(12px);
+  }
+  .intent-pill.active {
+    background: linear-gradient(135deg, rgba(77,159,255,0.15), rgba(167,139,250,0.15));
+    border-color: rgba(167,139,250,0.4);
+    color: #fff;
+    box-shadow: 0 0 24px -8px rgba(167, 139, 250, 0.4);
+  }
+  .intent-pill:hover { color: #fff; }
+
+  /* ============================
+     EVENTS
+     ============================ */
+  .events-grid {
+    margin-top: 60px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+  }
+  @media (max-width: 900px) { .events-grid { grid-template-columns: 1fr; } }
+  .event-card {
+    position: relative;
+    padding: 28px 26px;
+    border-radius: 22px;
+    background: rgba(15, 15, 22, 0.6);
+    border: 1px solid var(--glass-stroke);
+    backdrop-filter: blur(20px);
+    overflow: hidden;
+    transition: all .4s ease;
+  }
+  .event-card::before {
+    content: "";
+    position: absolute; inset: 0;
+    border-radius: 22px;
+    padding: 1px;
+    background: linear-gradient(135deg, transparent, rgba(167,139,250,0.4), transparent);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0; transition: opacity .4s;
+  }
+  .event-card:hover { transform: translateY(-6px); }
+  .event-card:hover::before { opacity: 1; }
+  .event-time { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--teal); margin-bottom: 14px; }
+  .event-title { font-size: 20px; font-weight: 400; margin-bottom: 12px; }
+  .event-desc { color: var(--ink-dim); font-size: 14px; line-height: 1.6; }
+  .event-meta {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid var(--glass-stroke);
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; color: var(--ink-faint);
+  }
+  .event-attendees {
+    display: flex;
+  }
+  .event-attendees span {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid var(--bg-1);
+    margin-left: -6px;
+    background: linear-gradient(135deg, var(--blue), var(--violet));
+  }
+  .event-attendees span:first-child { margin-left: 0; }
+  .event-attendees span:nth-child(2) { background: linear-gradient(135deg, var(--teal), var(--blue)); }
+  .event-attendees span:nth-child(3) { background: linear-gradient(135deg, var(--violet), var(--teal)); }
+
+  .growth-highlight {
+    margin-top: 70px;
+    padding: 40px;
+    border-radius: 22px;
+    background: linear-gradient(135deg, rgba(77,159,255,0.06), rgba(167,139,250,0.06));
+    border: 1px solid var(--glass-stroke-bright);
+  }
+  .growth-highlight h3 { margin-bottom: 14px; }
+  .growth-highlight p { color: var(--ink-dim); font-size: 15px; }
+
+  /* ============================
+     COMMUNITY VERIFIED — trust labels
+     ============================ */
+  .trust-labels {
+    margin-top: 60px;
+    display: flex; flex-wrap: wrap; gap: 14px;
+  }
+  .trust-label {
+    padding: 14px 22px;
+    border-radius: 999px;
+    background: rgba(94, 234, 212, 0.06);
+    border: 1px solid rgba(94, 234, 212, 0.25);
+    color: var(--teal);
+    font-size: 14px; font-weight: 400;
+    display: inline-flex; align-items: center; gap: 10px;
+    box-shadow: 0 0 30px -12px rgba(94, 234, 212, 0.5);
+  }
+  .trust-label::before {
+    content: ""; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--teal); box-shadow: 0 0 10px var(--teal);
+  }
+  .trust-label.violet {
+    background: rgba(167, 139, 250, 0.06);
+    border-color: rgba(167, 139, 250, 0.25);
+    color: var(--violet);
+    box-shadow: 0 0 30px -12px rgba(167, 139, 250, 0.5);
+  }
+  .trust-label.violet::before { background: var(--violet); box-shadow: 0 0 10px var(--violet); }
+  .trust-label.blue {
+    background: rgba(77, 159, 255, 0.06);
+    border-color: rgba(77, 159, 255, 0.25);
+    color: var(--blue);
+    box-shadow: 0 0 30px -12px rgba(77, 159, 255, 0.5);
+  }
+  .trust-label.blue::before { background: var(--blue); box-shadow: 0 0 10px var(--blue); }
+
+  .verified-rules {
+    margin-top: 50px;
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+  @media (max-width: 700px) { .verified-rules { grid-template-columns: 1fr; } }
+  .vr-item {
+    font-size: 15px; color: var(--ink-dim);
+    padding-top: 24px;
+    border-top: 1px solid var(--glass-stroke);
+  }
+  .vr-item .x {
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink-faint); margin-bottom: 10px;
+  }
+
+  /* ============================
+     NO FOLLOWERS — split section
+     ============================ */
+  .nf-split {
+    margin-top: 60px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 50px;
+    align-items: center;
+  }
+  @media (max-width: 800px) { .nf-split { grid-template-columns: 1fr; gap: 30px; } }
+  .nf-old {
+    padding: 36px;
+    border-radius: 22px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--glass-stroke);
+    position: relative;
+    overflow: hidden;
+  }
+  .nf-old::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, transparent 40%, var(--bg-0) 100%);
+    pointer-events: none;
+  }
+  .nf-stat {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 0;
+    color: var(--ink-faint);
+    font-size: 14px;
+    border-bottom: 1px solid var(--glass-stroke);
+  }
+  .nf-stat:last-child { border-bottom: none; }
+  .nf-stat .num { font-size: 18px; font-weight: 500; color: var(--ink-ghost); }
+
+  .nf-new {
+    padding: 36px;
+    border-radius: 22px;
+    background: linear-gradient(135deg, rgba(77,159,255,0.06), rgba(167,139,250,0.06));
+    border: 1px solid rgba(167,139,250,0.25);
+    box-shadow: 0 30px 70px -25px rgba(167, 139, 250, 0.4);
+  }
+  .nf-new .head {
+    display: flex; align-items: center; gap: 14px; margin-bottom: 20px;
+  }
+  .nf-new .head .avatar { width: 44px; height: 44px; }
+  .nf-new .who { font-size: 15px; font-weight: 500; }
+  .nf-new .where { font-size: 12px; color: var(--ink-faint); margin-top: 2px; }
+  .nf-new .row {
+    margin: 14px 0;
+    font-size: 13px; color: var(--ink-dim);
+  }
+  .nf-new .row .lab {
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ink-faint); margin-bottom: 6px;
+  }
+  .nf-new .pc-tags { margin-top: 0; }
+
+  /* ============================
+     HOW IT WORKS
+     ============================ */
+  .steps {
+    margin-top: 70px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 22px;
+    position: relative;
+  }
+  @media (max-width: 900px) { .steps { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 500px) { .steps { grid-template-columns: 1fr; } }
+  .step {
+    padding: 28px 24px;
+    border-radius: 18px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-stroke);
+    backdrop-filter: blur(14px);
+    position: relative;
+  }
+  .step-num {
+    font-size: 13px; font-weight: 500;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, var(--blue), var(--violet));
+    color: #fff; margin-bottom: 22px;
+    box-shadow: 0 0 20px -4px var(--violet);
+  }
+  .step h3 { font-size: 17px; font-weight: 500; margin-bottom: 10px; }
+  .step p { font-size: 14px; color: var(--ink-dim); }
+
+  /* ============================
+     FINAL CTA
+     ============================ */
+  .final {
+    text-align: center;
+    padding-top: 180px;
+    padding-bottom: 180px;
+  }
+  .final h2 {
+    font-size: clamp(40px, 6vw, 78px);
+    background: linear-gradient(135deg, var(--ink) 30%, var(--violet) 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    max-width: 900px; margin: 0 auto;
+  }
+  .final .lede { margin: 28px auto 0; }
+  .final .hero-actions { justify-content: center; }
+
+  footer {
+    padding: 50px 32px;
+    text-align: center;
+    color: var(--ink-faint);
+    font-size: 12px;
+    border-top: 1px solid var(--glass-stroke);
+  }
+
+  /* ============================
+     SCROLL REVEAL
+     ============================ */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity .9s ease, transform .9s ease;
+  }
+  .reveal.in {
+    opacity: 1; transform: translateY(0);
+  }
+
+</style>
+</head>
+<body>
+
+  <div class="backdrop"></div>
+  <div class="orb-teal"></div>
+  <div class="grain"></div>
+
+  <!-- NAV -->
+  <nav>
+    <div class="logo">
+      <span class="logo-dot"></span>
+      <span>vera</span>
+    </div>
+    <a class="nav-cta" href="#cta">Join Early Access</a>
+  </nav>
+
+  <!-- ============================
+       1. HERO
+       ============================ -->
+  <section class="hero">
+    <div class="hero-tags">
+      <div class="float-tag t1"><span class="dot"></span>Just Looking For Friends</div>
+      <div class="float-tag t2 violet"><span class="dot"></span>Community Verified</div>
+      <div class="float-tag t3 blue"><span class="dot"></span>Café Hop Nearby</div>
+      <div class="float-tag t4 violet"><span class="dot"></span>Open To Socializing</div>
+      <div class="float-tag t5"><span class="dot"></span>Running Group Tonight</div>
+      <div class="float-tag t6 blue"><span class="dot"></span>Verified People Nearby</div>
+    </div>
+
+    <div class="eyebrow reveal">Early access · 2026</div>
+    <h1 class="reveal">Meet <span class="grad">Real People</span><br/>Around You.</h1>
+    <p class="lede reveal">
+      Vera is designed to make people meet organically again —
+      through shared interests, real experiences, and trusted communities.
+    </p>
+    <div class="hero-actions reveal">
+      <a class="btn btn-primary" href="#cta">Join Early Access <span class="btn-arrow">→</span></a>
+      <a class="btn btn-ghost" href="#people">Explore Nearby</a>
+    </div>
+  </section>
+
+  <!-- ============================
+       2. THE PROBLEM
+       ============================ -->
+  <section>
+    <div class="eyebrow reveal">The Problem</div>
+    <h2 class="reveal">Social media changed how we connect —<br/>but not how we feel.</h2>
+
+    <div class="problem-grid">
+      <div class="problem-card reveal">
+        <div class="lbl">01</div>
+        <div class="ttl">Endless Scrolling</div>
+      </div>
+      <div class="problem-card reveal">
+        <div class="lbl">02</div>
+        <div class="ttl">Ghosting</div>
+      </div>
+      <div class="problem-card reveal">
+        <div class="lbl">03</div>
+        <div class="ttl">Fake Personas</div>
+      </div>
+      <div class="problem-card reveal">
+        <div class="lbl">04</div>
+        <div class="ttl">Feeling Disconnected</div>
+      </div>
+    </div>
+
+    <div class="problem-body reveal">
+      <div>
+        <p>We've never been more connected online, yet meeting people in real life feels harder than ever.</p>
+        <p>Most platforms are built for attention, scrolling, and online validation.</p>
+      </div>
+      <div>
+        <p>Vera is designed to help people meet organically again — through shared experiences, real conversations, and meaningful social interaction.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================
+       3. WHO IT'S FOR
+       ============================ -->
+  <section>
+    <div class="eyebrow reveal">Who It's For</div>
+    <h2 class="reveal">Built around shared interests.</h2>
+
+    <div class="interests">
+      <div class="interest-tag reveal">Café Hopping</div>
+      <div class="interest-tag reveal">Badminton</div>
+      <div class="interest-tag reveal">Running</div>
+      <div class="interest-tag reveal">Fitness</div>
+      <div class="interest-tag reveal">Live Music</div>
+      <div class="interest-tag reveal">Photography</div>
+      <div class="interest-tag reveal">Startup Meetups</div>
+      <div class="interest-tag reveal">Wellness</div>
+      <div class="interest-tag reveal">Coworking</div>
+      <div class="interest-tag reveal">Board Games</div>
+      <div class="interest-tag reveal">Food Exploration</div>
+      <div class="interest-tag reveal">Study Sessions</div>
+    </div>
+
+    <p class="who-copy reveal">
+      Whether you're new to the city, looking for activity partners,
+      or simply trying to meet genuine people — Vera helps you connect naturally.
+    </p>
+  </section>
+
+  <!-- ============================
+       4. PEOPLE AROUND YOU
+       ============================ -->
+  <section id="people">
+    <div class="eyebrow reveal">People Around You</div>
+    <h2 class="reveal">Discover people around you<br/>who match your vibe.</h2>
+    <p class="lede reveal">
+      Find verified people nearby who are open to making friends, joining activities,
+      exploring the city, or simply socializing. No pressure. No swiping culture.
+    </p>
+
+    <div class="map-wrap reveal">
+      <div class="map-grid"></div>
+      <div class="node n1"></div>
+      <div class="node v n2"></div>
+      <div class="node b n3"></div>
+      <div class="node n4"></div>
+      <div class="node v n5"></div>
+      <div class="me"></div>
+
+      <div class="profile-card pc-1">
+        <div class="pc-head">
+          <div class="avatar"></div>
+          <div>
+            <div class="pc-name">Ananya</div>
+            <div class="pc-dist">0.6 km away</div>
+          </div>
+        </div>
+        <div class="pc-tags">
+          <span class="pc-tag">Café Hopping</span>
+          <span class="pc-tag">Photography</span>
+        </div>
+        <div class="pc-verified">Community Verified</div>
+      </div>
+
+      <div class="profile-card pc-2">
+        <div class="pc-head">
+          <div class="avatar"></div>
+          <div>
+            <div class="pc-name">Rohan</div>
+            <div class="pc-dist">1.2 km away</div>
+          </div>
+        </div>
+        <div class="pc-tags">
+          <span class="pc-tag">Running</span>
+          <span class="pc-tag">Wellness</span>
+        </div>
+        <div class="pc-verified">Actually Shows Up</div>
+      </div>
+    </div>
+
+    <div class="intents reveal">
+      <span class="intents-label">Looking For:</span>
+      <div class="intent-pill active">Just Friends</div>
+      <div class="intent-pill">Activity Partners</div>
+      <div class="intent-pill">Group Meetups</div>
+      <div class="intent-pill">Exploring Nearby</div>
+    </div>
+  </section>
+
+  <!-- ============================
+       5. EVENTS & EXPERIENCES
+       ============================ -->
+  <section>
+    <div class="eyebrow reveal">Events &amp; Experiences</div>
+    <h2 class="reveal">Meet through real experiences.</h2>
+    <p class="lede reveal">Join curated experiences designed to help people connect naturally — intimate, community-driven, low-pressure.</p>
+
+    <div class="events-grid">
+      <div class="event-card reveal">
+        <div class="event-time">Sat · 7:30 AM</div>
+        <div class="event-title">Sunday Runner's Circle</div>
+        <div class="event-desc">A relaxed 5K loop along the lake followed by coffee. Open to all paces.</div>
+        <div class="event-meta">
+          <div class="event-attendees"><span></span><span></span><span></span></div>
+          <div>12 going</div>
+        </div>
+      </div>
+      <div class="event-card reveal">
+        <div class="event-time">Fri · 6:00 PM</div>
+        <div class="event-title">Café Hop &amp; Talk</div>
+        <div class="event-desc">Three cafés, four hours, new conversations. No phones at the table.</div>
+        <div class="event-meta">
+          <div class="event-attendees"><span></span><span></span><span></span></div>
+          <div>8 going</div>
+        </div>
+      </div>
+      <div class="event-card reveal">
+        <div class="event-time">Wed · 8:00 PM</div>
+        <div class="event-title">Creator Circle</div>
+        <div class="event-desc">A small room of designers, founders, and writers. Pull up a chair.</div>
+        <div class="event-meta">
+          <div class="event-attendees"><span></span><span></span><span></span></div>
+          <div>15 going</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="growth-highlight reveal">
+      <h3>Show up. Build trust. Be remembered.</h3>
+      <p>Every meetup helps build your community credibility, social reliability, and trusted presence within Vera. People who consistently show up and create good experiences become more trusted within the community over time.</p>
+    </div>
+  </section>
+
+  <!-- ============================
+       6. COMMUNITY VERIFIED
+       ============================ -->
+  <section>
+    <div class="eyebrow reveal">Community Verified</div>
+    <h2 class="reveal">A more accountable social space.</h2>
+    <p class="lede reveal">Vera is built around genuine interaction and community accountability — recognized through labels, not numbers.</p>
+
+    <div class="trust-labels">
+      <div class="trust-label reveal">Community Verified</div>
+      <div class="trust-label blue reveal">Reliable</div>
+      <div class="trust-label violet reveal">Great Group Energy</div>
+      <div class="trust-label reveal">Friendly &amp; Respectful</div>
+      <div class="trust-label blue reveal">Actually Shows Up</div>
+    </div>
+
+    <div class="verified-rules">
+      <div class="vr-item reveal">
+        <div class="x">No</div>
+        Fake personas.
+      </div>
+      <div class="vr-item reveal">
+        <div class="x">No</div>
+        Endless ghosting.
+      </div>
+      <div class="vr-item reveal">
+        <div class="x">No</div>
+        Chasing followers.
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================
+       7. NO FOLLOWERS
+       ============================ -->
+  <section>
+    <div class="eyebrow reveal">No Followers</div>
+    <h2 class="reveal">Your profile reflects who you are offline.</h2>
+    <p class="lede reveal">
+      Your profile is built around your interests, experiences, personality,
+      and the community you build — not likes or popularity metrics.
+    </p>
+
+    <div class="nf-split">
+      <div class="nf-old reveal">
+        <div class="nf-stat"><span>Followers</span><span class="num">14.2k</span></div>
+        <div class="nf-stat"><span>Following</span><span class="num">892</span></div>
+        <div class="nf-stat"><span>Likes</span><span class="num">238k</span></div>
+        <div class="nf-stat"><span>Posts</span><span class="num">1,204</span></div>
+        <div class="nf-stat"><span>Engagement</span><span class="num">3.1%</span></div>
+      </div>
+      <div class="nf-new reveal">
+        <div class="head">
+          <div class="avatar"></div>
+          <div>
+            <div class="who">Ananya</div>
+            <div class="where">Indiranagar, Bangalore</div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="lab">Interests</div>
+          <div class="pc-tags">
+            <span class="pc-tag">Café Hopping</span>
+            <span class="pc-tag">Photography</span>
+            <span class="pc-tag">Live Music</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="lab">Community</div>
+          <div class="pc-tags">
+            <span class="pc-tag">Community Verified</span>
+            <span class="pc-tag">Great Group Energy</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================
+       8. HOW IT WORKS
+       ============================ -->
+  <section>
+    <div class="eyebrow reveal">How It Works</div>
+    <h2 class="reveal">Four steps. No friction.</h2>
+
+    <div class="steps">
+      <div class="step reveal">
+        <div class="step-num">1</div>
+        <h3>Create Your Profile</h3>
+        <p>Add interests and social preferences.</p>
+      </div>
+      <div class="step reveal">
+        <div class="step-num">2</div>
+        <h3>Discover Nearby People</h3>
+        <p>Find verified people around you.</p>
+      </div>
+      <div class="step reveal">
+        <div class="step-num">3</div>
+        <h3>Join Experiences</h3>
+        <p>Connect through shared activities.</p>
+      </div>
+      <div class="step reveal">
+        <div class="step-num">4</div>
+        <h3>Build Credibility</h3>
+        <p>Every interaction builds trust naturally.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================
+       9. FINAL CTA
+       ============================ -->
+  <section id="cta" class="final">
+    <div class="eyebrow reveal" style="justify-content:center;">Join Vera</div>
+    <h2 class="reveal">Less scrolling.<br/>More real people.</h2>
+    <p class="lede reveal">Vera makes meeting people feel natural again.</p>
+    <div class="hero-actions reveal">
+      <a class="btn btn-primary" href="#">Join Early Access <span class="btn-arrow">→</span></a>
+      <a class="btn btn-ghost" href="#">Become Community Verified</a>
+    </div>
+  </section>
+
+  <footer>
+    © 2026 Vera · meeting people, made human again
+  </footer>
+
+<script>
+  // simple scroll reveal
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e, i) => {
+      if (e.isIntersecting) {
+        e.target.style.transitionDelay = (i * 60) + 'ms';
+        e.target.classList.add('in');
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+  // intent pill toggle
+  document.querySelectorAll('.intent-pill').forEach(p => {
+    p.addEventListener('click', () => {
+      document.querySelectorAll('.intent-pill').forEach(x => x.classList.remove('active'));
+      p.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>
